@@ -1,0 +1,1 @@
+# domain-variant-generator
