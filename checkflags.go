@@ -16,7 +16,7 @@ func checkargs (i int, inDom string) {
 	}
 	
 	if isDomain(inDom) {
-		permute(inDom)
+		permute_string(inDom)
 	} else {
 		errormsg("Invalid Arguments")
 		runhelp()

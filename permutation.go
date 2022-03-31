@@ -4,29 +4,122 @@ import (
 	"strings"
 	"golang.org/x/net/idna"
 	"github.com/likexian/whois"
+	"strconv"
 )
 
 var p *idna.Profile
+var finalResult []string
+var maxRecursiveLevel int
+var cpt = 0
+var cpt_b = 0
 	
-func permute(domain string){
-	dico := dicoSetup()
-	res := []string{}
-	var asciiResult string
-	word := strings.Split(domain, ".")
-	splittedWorld := strings.Split(word[0], "")
-	p = idna.New()
-	for i, v := range(splittedWorld) {
-		for _, altChar := range(dico[v]){
-			asciiResult, _ = p.ToASCII(strings.Join(splittedWorld[:i], "")+altChar+strings.Join(splittedWorld[i+1:], "")+"."+word[1])
-			if stringInSlice(asciiResult, res){
-				debugmsg("Duplicate string: " + asciiResult)
-			}else{
-				res = append(res, asciiResult)
-			}
-			
+func permute_string(domain string){
+	maxRecursiveSetup(domain)
+	finalResult := generator(domain)
+	debugmsg("permute_string - first list generated")
+	permute_list(finalResult)
+	debugmsg("permute_string - permutation ended ... file will be writen soon")
+	returnResult(listToPunycode(finalResult))
+}
+
+func permute_list(domains []string){
+	debugmsg("permute_list - function called")
+	debugmsg("permute_list - cpt bis=" + strconv.Itoa(cpt))
+	cpt = cpt + 1
+	if cpt <= maxRecursiveLevel {
+		debugmsg("permute_list - enter IF")
+		var workList []string
+		debugmsg("permute_list - input length=" + strconv.Itoa(len(domains)))
+		for _, val := range(domains) {
+			debugmsg("permute_list - enter FOR")
+			workList = generator(val)
+			debugmsg("permute_list - list generated")
+			finalResult = mergeList(finalResult, workList)
+			debugmsg("permute_list - list merged")
+			permute_list_bis(workList)
+			cpt_b = 0
+		}
+	}else{
+		debugmsg("permute_list - enter ELSE")
+		debugmsg("permute_list - recursion ended")
+	}
+}
+
+func permute_list_bis(domains []string){
+	debugmsg("permute_list_bis - function called")
+	debugmsg("permute_list_bis - cpt bis=" + strconv.Itoa(cpt_b))
+	cpt_b = cpt_b + 1
+	if cpt_b <= maxRecursiveLevel {
+		debugmsg("permute_list_bis - enter IF")
+		var workList []string
+		debugmsg("permute_list_bis - input length=" + strconv.Itoa(len(domains)))
+		for _, val := range(domains) {
+			debugmsg("permute_list_bis - enter FOR")
+			workList = generator(val)
+			debugmsg("permute_list_bis - list generated")
+			finalResult = mergeList(finalResult, workList)
+			debugmsg("permute_list_bis - list merged")
+			permute_list_bis(workList)
+		}
+	}else{
+		debugmsg("permute_list_bis - enter ELSE")
+		debugmsg("permute_list_bis - recursion ended")
+	}
+}
+
+func mergeList (outputList []string, toMerge []string) []string {
+	debugmsg("mergeList - function called")
+	for _, v := range(toMerge){
+		if stringInSlice(v, outputList) {
+			debugmsg("Duplicate string: " + toPunycode(v))
+		}else{
+			outputList = append(outputList, v)
 		}
 	}
-	returnResult(res)
+	return outputList
+}
+
+func maxRecursiveSetup(s string) {
+	word := strings.Split(s, ".")
+	maxRecursiveLevel = len(word[0])
+	debugmsg("maxRecursiveSetup - maxRecursiveLevel=" + strconv.Itoa(len(word[0])))
+}
+
+func listToPunycode(input []string) []string {
+	p = idna.New()
+	var output []string
+	var asciiStr string
+	for _, v := range(input){
+		asciiStr, _ = p.ToASCII(v)
+		output = append(output, asciiStr)
+	}
+	return output
+}
+
+func toPunycode(s string) string {
+	p = idna.New()
+	asciiStr, _ := p.ToASCII(s)
+	return asciiStr
+}
+
+func generator(s string) []string {
+	debugmsg("generator - function called")
+	dico := dicoSetup()
+	sl := []string{}
+	var res string
+	word := strings.Split(s, ".")
+	splittedWorld := strings.Split(word[0], "")
+	for i, v := range(splittedWorld) {
+		for _, altChar := range(dico[v]) {
+			res = strings.Join(splittedWorld[:i], "")+altChar+strings.Join(splittedWorld[i+1:], "")+"."+word[1]
+			if stringInSlice(res, sl) {
+				debugmsg("Duplicate string: " + toPunycode(res))
+			}else{
+				sl = append(sl, res)
+			}
+		}
+	}
+	return sl
 }
 
 func stringInSlice(a string, list []string) bool {
@@ -70,8 +163,8 @@ func asWhois(d string) (bool, string) {
 func getRegistrar(whoisResult string) string {
 	regisSubstr := "Registrar:"
 	splittedResult := strings.Split(whoisResult, "\n")
-	for _,line := range(splittedResult){
-		if strings.Contains(line, regisSubstr){
+	for _,line := range(splittedResult) {
+		if strings.Contains(line, regisSubstr) {
 			return strings.Split(line,":")[1]
 		}
 	}
